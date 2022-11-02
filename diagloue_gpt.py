@@ -1,5 +1,5 @@
 import torch
-import pickle 
+import pickle as pkl 
 import sys 
 from argparse import ArgumentParser 
 import transformers
@@ -36,22 +36,21 @@ if __name__ == '__main__':
     model.eval() 
 
     step = 0
-    convertation= dict() 
+    converstation= []
     while True:
         inputs = input(">> User: ")
+        converstation.append(f"User: {inputs}")
         if inputs.startswith("stopconv".lower()):
             print("See ya!")
+            converstation.append(f"Bot: See ya!")
+            with open("chat_chit.pkl", mode= 'wb') as f: 
+                pkl.dump(converstation, f, protocol= pkl.HIGHEST_PROTOCOL)
             break
         new_user_input_ids = tokenizer.encode(inputs + tokenizer.eos_token, return_tensors='pt').to(device)
         bot_input_ids = torch.cat([gen_ids, new_user_input_ids], dim=-1) if step > 0 else new_user_input_ids  
-        # gen_ids = model.generate(
-        #     bot_input_ids.cuda(), 
-        #     max_length=200, 
-        #     pad_token_id=tokenizer.eos_token_id,
-        #     ).cuda()  
         gen_ids = model.generate(
             bot_input_ids.to(device), 
-            max_length=200, 
+            max_length=1000, 
             pad_token_id=tokenizer.eos_token_id,
             no_repeat_ngram_size=3,       
             do_sample=True, 
@@ -60,5 +59,7 @@ if __name__ == '__main__':
             temperature = 0.8
             ).to(device) 
         step += 1
-        print(">>Bot: {}".format(tokenizer.decode(gen_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)))
+        generate_text= tokenizer.decode(gen_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)
+        print(">>Bot: {}".format(generate_text))
+        converstation.append(f"Bot: {generate_text}")
         print()
